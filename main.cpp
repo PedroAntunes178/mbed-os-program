@@ -51,7 +51,7 @@ void air_measure(void){
     buffer[0] = AIR;
     *f_buf = determinePPM(sensorMQ2, r0MQ2, slopeMQ2, interceptMQ2); //mq2sensorPPM;
     can_mutex.lock();
-    can1.write(CANMessage(1337, buffer, 5));
+    can.write(CANMessage(1337, buffer, 5));
     can_mutex.unlock();
     stdio_mutex.lock();
     printf("Sent air: %d\n", (int)*f_buf);
@@ -77,7 +77,7 @@ void temperature_measure(void){
         printf("Temperature calculated: %d\n", (int)*f_buf);
         stdio_mutex.unlock();
         can_mutex.lock();
-        can1.write(CANMessage(1337, buffer, sizeof(buffer)));
+        can.write(CANMessage(1337, buffer, sizeof(buffer)));
         can_mutex.unlock();
 
     } else {
@@ -86,7 +86,7 @@ void temperature_measure(void){
         stdio_mutex.unlock();
         buffer[1] = ERR;
         can_mutex.lock();
-        can1.write(CANMessage(1337, buffer, 2));
+        can.write(CANMessage(1337, buffer, 2));
         can_mutex.unlock();
     }
     ThisThread::sleep_for(5s);
@@ -97,7 +97,7 @@ void send(void){
   while(1){
     stdio_mutex.lock();
     printf("send()\n");
-    if (can1.write(CANMessage(1337, &counter, 1))) {
+    if (can.write(CANMessage(1337, &counter, 1))) {
       printf("wloop()\n");
       counter++;
       printf("Message sent: %d\n", counter);
@@ -156,7 +156,7 @@ int main(){
   CANMessage msg;
 
   while (1) {
-    if (can2.read(msg)) {
+    if (can.read(msg)) {
       mail_t *mail = mail_box.try_alloc();
       mail->identifier = msg.data[0];
       float *f_buf = (float*)(msg.data+1);
