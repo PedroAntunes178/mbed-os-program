@@ -44,38 +44,49 @@ char determinePPM(AnalogIn sensor, float R0, float m, float b) {
 }
 
 void air_measure(void){
-  //float mq2sensorPPM;
-  char msg[8];
+  unsigned char buffer[8];
+  float *f_buf = (float*)(buffer+1);
 
   while(1){
-    msg[0] = AIR;
-    *(msg+1) = determinePPM(sensorMQ2, r0MQ2, slopeMQ2, interceptMQ2); //mq2sensorPPM;
+    buffer[0] = AIR;
+    *f_buf = determinePPM(sensorMQ2, r0MQ2, slopeMQ2, interceptMQ2); //mq2sensorPPM;
     can_mutex.lock();
-    can1.write(CANMessage(1337, msg, 5));
+    can1.write(CANMessage(1337, buffer, 5));
     can_mutex.unlock();
-    ThisThread::sleep_for(500ms);
+    stdio_mutex.lock();
+    printf("Sent air: %d\n", (int)*f_buf);
+    stdio_mutex.unlock();
+    ThisThread::sleep_for(1s);
   }
 
 }
 
 void temperature_measure(void){
-  char msg[8];
+  unsigned char buffer[8];
+  float *f_buf = (float*)(buffer+1);
 
   while(1){
-    msg[0] = TMP;
+    buffer[0] = TMP;
     //Try to open the LM75B
     if (sensor.open()) {
+        stdio_mutex.lock();
         printf("Device detected!\n");
-        *(msg+1)=(float)sensor.temp();
+        stdio_mutex.unlock();
+        *f_buf=sensor.temp();
+        stdio_mutex.lock();
+        printf("Temperature calculated: %d\n", (int)*f_buf);
+        stdio_mutex.unlock();
         can_mutex.lock();
-        can1.write(CANMessage(1337, msg, 5));
+        can1.write(CANMessage(1337, buffer, sizeof(buffer)));
         can_mutex.unlock();
 
     } else {
+        stdio_mutex.lock();
         error("Device not detected!\n");
-        msg[1] = ERR;
+        stdio_mutex.unlock();
+        buffer[1] = ERR;
         can_mutex.lock();
-        can1.write(CANMessage(1337, msg, 2));
+        can1.write(CANMessage(1337, buffer, 2));
         can_mutex.unlock();
     }
     ThisThread::sleep_for(5s);
@@ -86,13 +97,11 @@ void send(void){
   while(1){
     stdio_mutex.lock();
     printf("send()\n");
-    can_mutex.lock();
     if (can1.write(CANMessage(1337, &counter, 1))) {
       printf("wloop()\n");
       counter++;
       printf("Message sent: %d\n", counter);
     }
-    can_mutex.unlock();
     stdio_mutex.unlock();
     ThisThread::sleep_for(1s);
   }
@@ -100,19 +109,28 @@ void send(void){
 
 void process_msg(void){
   char msg_aux;
+  float f_msg_aux;
 
   while(1){
-    mail_t *mail = mail_box.try_get();
+    mail_t *mail = mail_box.try_get_for(100ms);
     if(mail!=NULL){
-      msg_aux =  mail->msg[0];
+      msg_aux =  mail->identifier;
       stdio_mutex.lock();
       printf("Message received: %d\n", (int)msg_aux);
       stdio_mutex.unlock();
-      if(mail->msg[0]==AIR){
+      if(msg_aux==AIR){
+        f_msg_aux = mail->data;
         lcd_mutex.lock();
         lcd.cls();
-        lcd.locate(0,3);
-        lcd.printf("Temp = %.3f\n", (float)*(mail->msg+1));
+        lcd.locate(0,0);
+        lcd.printf("Air quality: %d\n", (int)f_msg_aux);
+        lcd_mutex.unlock();
+      } else if(msg_aux==TMP){
+        f_msg_aux = mail->data;
+        lcd_mutex.lock();
+        lcd.cls();
+        lcd.locate(0,12);
+        lcd.printf("Temperature: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
       }
       mail_box.free(mail);
@@ -127,27 +145,22 @@ int main(){
   printf("main()\n");
 
   /*thread.start(send);
-  thread.set_priority(osPriorityHigh);*/
+  thread.set_priority(osPriorityHigh);
   thread_air.start(air_measure);
-  thread_air.set_priority(osPriorityLow1);
+  thread_air.set_priority(osPriorityNormal);*/
   thread_temprature.start(temperature_measure);
-  thread_temprature.set_priority(osPriorityLow2);
+  thread_temprature.set_priority(osPriorityNormal);
   thread_msg.start(callback(process_msg));
-  thread_msg.set_priority(osPriorityLow);
+  thread_msg.set_priority(osPriorityNormal1);
 
   CANMessage msg;
-  bool flag;
+
   while (1) {
-    stdio_mutex.lock();
-    printf("Loop...\n");
-    stdio_mutex.unlock();
-    flag = can2.read(msg, 0);
-      stdio_mutex.lock();
-      printf("Bug...\n");
-      stdio_mutex.unlock();
-    if (flag) {
+    if (can2.read(msg)) {
       mail_t *mail = mail_box.try_alloc();
-      *(mail->msg) = (long long)*(msg.data);
+      mail->identifier = msg.data[0];
+      float *f_buf = (float*)(msg.data+1);
+      mail->data = *f_buf;
       mail_box.put(mail);
     }
   }

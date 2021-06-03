@@ -34,7 +34,8 @@ ESTRUTURAS
 */
 /* Mail */
 typedef struct {
-    char msg[8]; /* CAN message received */
+  char identifier; /* CAN message identifier */
+  float data;    /* CAN message data */
 } mail_t;
 
 /*
@@ -49,7 +50,7 @@ void send(void);
 void process_msg(void);
 
 /*
-VARIAVEIS
+VARIAVEIS GLOBAIS
 */
 
 /** The constructor takes in RX, and TX pin respectively.
