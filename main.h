@@ -25,6 +25,7 @@ DEFINES
 #define ERR 0xfd
 #define TMP 0xfc
 #define AIR 0xfb
+#define LUM 0xfa
 
 
 /*
@@ -60,8 +61,12 @@ C12832 lcd(p5, p7, p6, p8, p11);
 LM75B sensor(p28,p27);
 
 Mutex stdio_mutex, lcd_mutex, can_mutex;
-Thread thread, thread_air, thread_temprature;
+Thread thread, thread_air, thread_temprature, thread_luminosity, thread_msg;
 Mail<mail_t, 16> mail_box;
+
+
+AnalogIn pot1 (p19);
+//AnalogIn pot2 (p20);
 
 AnalogIn sensorMQ2(MQ2_ANALOG_PIN);
 //constants
