@@ -55,12 +55,13 @@ VARIAVEIS GLOBAIS
   * These pins, for this example, are defined in mbed_app.json
   */
 CAN can(MBED_CONF_APP_CAN_RD, MBED_CONF_APP_CAN_TD);
+BufferedSerial node(p9, p10);
 
 C12832 lcd(p5, p7, p6, p8, p11);
 LM75B sensor(p28,p27);
 
 Mutex stdio_mutex, lcd_mutex, can_mutex;
-Thread thread, thread_air, thread_temprature;
+Thread thread, thread_air, thread_temprature, thread_msg;
 Mail<mail_t, 16> mail_box;
 
 AnalogIn sensorMQ2(MQ2_ANALOG_PIN);

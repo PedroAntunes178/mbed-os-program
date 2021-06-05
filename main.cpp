@@ -3,8 +3,6 @@
 DigitalOut led1(LED1);
 DigitalOut led2(LED2);
 
-Thread thread_msg;
-
 char counter = 0;
 
 
@@ -148,8 +146,8 @@ int main(){
   thread.set_priority(osPriorityHigh);*/
   thread_air.start(air_measure);
   thread_air.set_priority(osPriorityNormal);
-  /*thread_temprature.start(temperature_measure);
-  thread_temprature.set_priority(osPriorityNormal);*/
+  thread_temprature.start(temperature_measure);
+  thread_temprature.set_priority(osPriorityLow9);
   thread_msg.start(callback(process_msg));
   thread_msg.set_priority(osPriorityNormal1);
 
