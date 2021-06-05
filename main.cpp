@@ -3,11 +3,6 @@
 DigitalOut led1(LED1);
 DigitalOut led2(LED2);
 
-Thread thread_msg;
-
-char counter = 0;
-
-
 float calculateR0(AnalogIn s, float ratio) {
         float sensor_volt;
         float rs;
@@ -43,13 +38,13 @@ char determinePPM(AnalogIn sensor, float R0, float m, float b) {
         return (char)floor(ppm);
 }
 
-void luminosity_measure(){
+void sensor_read(){
   unsigned char buffer[8];
   float *f_buf = (float*)(buffer+1);
 
   while(1){
     buffer[0] = LUM;
-    *f_buf = (float)pot1.read(); //mq2sensorPPM;
+    *f_buf = (float)pot1.read()*100; //mq2sensorPPM;
     can_mutex.lock();
     mail_t *mail = mail_box.try_alloc();
     mail->identifier = buffer[0];
@@ -60,32 +55,7 @@ void luminosity_measure(){
     printf("Sent luminosity: %d\n", (int)*f_buf);
     stdio_mutex.unlock();
     ThisThread::sleep_for(SENSOR_INTERVAL);
-  }
-}
 
-void air_measure(void){
-  unsigned char buffer[8];
-  float *f_buf = (float*)(buffer+1);
-
-  while(1){
-    buffer[0] = AIR;
-    *f_buf = determinePPM(sensorMQ2, r0MQ2, slopeMQ2, interceptMQ2); //mq2sensorPPM;
-    can_mutex.lock();
-    can.write(CANMessage(1337, buffer, 5));
-    can_mutex.unlock();
-    stdio_mutex.lock();
-    printf("Sent air: %d\n", (int)*f_buf);
-    stdio_mutex.unlock();
-    ThisThread::sleep_for(SENSOR_INTERVAL);
-  }
-
-}
-
-void temperature_measure(void){
-  unsigned char buffer[8];
-  float *f_buf = (float*)(buffer+1);
-
-  while(1){
     buffer[0] = TMP;
     //Try to open the LM75B
     if (sensor.open()) {
@@ -93,11 +63,12 @@ void temperature_measure(void){
         printf("Device detected!\n");
         stdio_mutex.unlock();
         *f_buf=sensor.temp();
-        stdio_mutex.lock();
-        printf("Temperature calculated: %d\n", (int)*f_buf);
-        stdio_mutex.unlock();
         can_mutex.lock();
-        can.write(CANMessage(1337, buffer, sizeof(buffer)));
+        if(can.write(CANMessage(1337, buffer, sizeof(buffer)))){
+          stdio_mutex.lock();
+          printf("Sent temperature: %d\n", (int)*f_buf);
+          stdio_mutex.unlock();
+        }
         can_mutex.unlock();
 
     } else {
@@ -110,26 +81,27 @@ void temperature_measure(void){
         can_mutex.unlock();
     }
     ThisThread::sleep_for(SENSOR_INTERVAL);
-  }
-}
 /*
-void send(void){
-  while(1){
-    stdio_mutex.lock();
-    printf("send()\n");
-    if (can.write(CANMessage(1337, &counter, 1))) {
-      printf("wloop()\n");
-      counter++;
-      printf("Message sent: %d\n", counter);
+    buffer[0] = AIR;
+    *f_buf = determinePPM(sensorMQ2, r0MQ2, slopeMQ2, interceptMQ2); //mq2sensorPPM;
+    can_mutex.lock();
+    if(can.write(CANMessage(1337, buffer, 5))){
+      stdio_mutex.lock();
+      printf("Sent air: %d\n", (int)*f_buf);
+      stdio_mutex.unlock();
     }
-    stdio_mutex.unlock();
-    ThisThread::sleep_for(1s);
+    can_mutex.unlock();
+    ThisThread::sleep_for(SENSOR_INTERVAL);
+*/
   }
 }
-*/
+
 void process_msg(void){
   char msg_aux;
   float f_msg_aux;
+  char buffer[8];
+  float *f_buf;
+  f_buf = (float *)(buffer+1);
 
   while(1){
     mail_t *mail = mail_box.try_get_for(100ms);
@@ -146,8 +118,18 @@ void process_msg(void){
         lcd.printf("Air quality: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if(f_msg_aux>50){
-          node.write("SOS\n", 5);
+          buffer[0]=INIT;
+          buffer[1]=SOS;
+          buffer[2]=END;
+          node.write(buffer, sizeof(buffer));
         }
+        ThisThread::sleep_for(10ms);
+        buffer[0]=INIT;
+        buffer[1]=AIR;
+        *f_buf = f_msg_aux;
+        buffer[7]=END;
+        node.write(buffer, sizeof(buffer));
+        ThisThread::sleep_for(10ms);
       } else if(msg_aux==TMP){
         f_msg_aux = mail->data;
         lcd_mutex.lock();
@@ -156,8 +138,18 @@ void process_msg(void){
         lcd.printf("Temperature: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if(f_msg_aux>50){
-          node.write("SOS\n", 5);
+          buffer[0]=INIT;
+          buffer[1]=SOS;
+          buffer[2]=END;
+          node.write(buffer, sizeof(buffer));
         }
+        ThisThread::sleep_for(10ms);
+        buffer[0]=INIT;
+        buffer[1]=TMP;
+        *f_buf = f_msg_aux;
+        buffer[7]=END;
+        node.write(buffer, sizeof(buffer));
+        ThisThread::sleep_for(10ms);
       } else if(msg_aux==LUM){
         f_msg_aux = mail->data;
         lcd_mutex.lock();
@@ -166,8 +158,18 @@ void process_msg(void){
         lcd.printf("Luminosity: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if(f_msg_aux>50){
-          node.write("SOS\n", 5);
+          buffer[0]=INIT;
+          buffer[1]=SOS;
+          buffer[2]=END;
+          node.write(buffer, sizeof(buffer));
         }
+        ThisThread::sleep_for(10ms);
+        buffer[0]=INIT;
+        buffer[1]=LUM;
+        *f_buf = f_msg_aux;
+        buffer[7]=END;
+        node.write(buffer, sizeof(buffer));
+        ThisThread::sleep_for(10ms);
       }
       mail_box.free(mail);
     }
@@ -180,22 +182,16 @@ int main(){
 
   char buf[MAXIMUM_BUFFER_SIZE] = {0};
 
-  printf("main()\n");
-  node.write("Hi!\n", 4);
+  node.write("Hi Node!\n", 4);
   if (node.read(buf, sizeof(buf))) {
-    printf("Node anwered.\n");
+    printf("Node answered back :)\n");
   }
+  printf("Entering main()\n");
 
-  /*thread.start(send);
-  thread.set_priority(osPriorityHigh);*/
-  thread_air.start(air_measure);
-  thread_air.set_priority(osPriorityLow5);
-  thread_luminosity.start(luminosity_measure);
-  thread_luminosity.set_priority(osPriorityLow6);
-  thread_temprature.start(temperature_measure);
-  thread_temprature.set_priority(osPriorityLow7);
+  thread_sensor_read.start(callback(sensor_read));
+  thread_sensor_read.set_priority(osPriorityNormal);
   thread_msg.start(callback(process_msg));
-  thread_msg.set_priority(osPriorityNormal1);
+  thread_msg.set_priority(osPriorityNormal2);
 
   CANMessage msg;
 
