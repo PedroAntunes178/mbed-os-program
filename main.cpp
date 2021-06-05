@@ -76,7 +76,7 @@ void air_measure(void){
     stdio_mutex.lock();
     printf("Sent air: %d\n", (int)*f_buf);
     stdio_mutex.unlock();
-    ThisThread::sleep_for(1s);
+    ThisThread::sleep_for(SENSOR_INTERVAL);
   }
 
 }
@@ -109,10 +109,10 @@ void temperature_measure(void){
         can.write(CANMessage(1337, buffer, 2));
         can_mutex.unlock();
     }
-    ThisThread::sleep_for(5s);
+    ThisThread::sleep_for(SENSOR_INTERVAL);
   }
 }
-
+/*
 void send(void){
   while(1){
     stdio_mutex.lock();
@@ -126,7 +126,7 @@ void send(void){
     ThisThread::sleep_for(1s);
   }
 }
-
+*/
 void process_msg(void){
   char msg_aux;
   float f_msg_aux;
@@ -187,11 +187,11 @@ int main(){
   }
 
   /*thread.start(send);
-  thread.set_priority(osPriorityHigh);
+  thread.set_priority(osPriorityHigh);*/
   thread_air.start(air_measure);
-  thread_air.set_priority(osPriorityNormal);*/
-  /*thread_luminosity.start(luminosity_measure);
-  thread_luminosity.set_priority(osPriorityNormal);*/
+  thread_air.set_priority(osPriorityLow5);
+  thread_luminosity.start(luminosity_measure);
+  thread_luminosity.set_priority(osPriorityLow6);
   thread_temprature.start(temperature_measure);
   thread_temprature.set_priority(osPriorityLow7);
   thread_msg.start(callback(process_msg));
