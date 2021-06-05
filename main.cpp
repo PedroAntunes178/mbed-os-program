@@ -46,12 +46,14 @@ void sensor_read(){
     buffer[0] = LUM;
     *f_buf = (float)pot1.read()*100; //mq2sensorPPM;
     can_mutex.lock();
-    if(can.write(CANMessage(1337, buffer, 5))){
-      stdio_mutex.lock();
-      printf("Sent luminosity: %d\n", (int)*f_buf);
-      stdio_mutex.unlock();
-    }
+    mail_t *mail = mail_box.try_alloc();
+    mail->identifier = buffer[0];
+    mail->data = *f_buf;
+    mail_box.put(mail);
     can_mutex.unlock();
+    stdio_mutex.lock();
+    printf("Sent luminosity: %d\n", (int)*f_buf);
+    stdio_mutex.unlock();
     ThisThread::sleep_for(SENSOR_INTERVAL);
 
     buffer[0] = TMP;
@@ -83,14 +85,12 @@ void sensor_read(){
     buffer[0] = AIR;
     *f_buf = determinePPM(sensorMQ2, r0MQ2, slopeMQ2, interceptMQ2); //mq2sensorPPM;
     can_mutex.lock();
-    mail_t *mail = mail_box.try_alloc();
-    mail->identifier = buffer[0];
-    mail->data = *f_buf;
-    mail_box.put(mail);
+    if(can.write(CANMessage(1337, buffer, 5))){
+      stdio_mutex.lock();
+      printf("Sent air: %d\n", (int)*f_buf);
+      stdio_mutex.unlock();
+    }
     can_mutex.unlock();
-    stdio_mutex.lock();
-    printf("Sent air: %d\n", (int)*f_buf);
-    stdio_mutex.unlock();
     ThisThread::sleep_for(SENSOR_INTERVAL);
   }
 }
@@ -176,6 +176,7 @@ void process_msg(void){
 int main(){
   //Uncomment if we want to reset R0 from default to our environment
   //r0MQ2 = calculateR0(sensorMQ2, airRatioMQ2);
+
 /*
   node.write("Hi Node!\n", 4);
   if (node.read(buf, sizeof(buf))) {
