@@ -34,7 +34,7 @@
 
 // Definir a localização na EEPROM (memória não volátil) onde se vai armazenar o ficheiro de configuração
 #define CONFIG_START 0
-#define CONFIG_VERSION "SERv011" //as to be of size 8bytes
+#define CONFIG_VERSION "SERv101" //as to be of size 8bytes
 
 // Estrutura dos dados que estão guardados na memoria
 struct StoreStruct {
@@ -65,6 +65,13 @@ String valueStr(""); // Guarda o valor a enviar para a cloud
 String topic(""); // Guarda uma string relativamente ao topico a que nos queremos referir quando enviamos uma mensagem para a cloud
 boolean result; // Recebe o resultado da comunicação com a cloud
 boolean sos; // Indica se existe sos
+boolean sosOld; // Indica se existe uma mudança no sinal de sos
+int temperature; // guarda a Temperatura
+int temperatureOld; // Indica se existe uma mudança no valor da temperatura
+int luminosity; // guarda a luminosidade
+int luminosityOld; // Indica se existe uma mudança no valor da luminosidade
+int air_quality; // guarda a qualidade do ar
+int air_qualityOld; // Indica se existe uma mudança no valor da qualidade do ar
 boolean stringComplete; // Indica se a string está prota para ser processada
 boolean startTransmission; // Indica se a string está prota para ser processada
 String inputString = "";         // a String to hold incoming data
@@ -74,6 +81,12 @@ String inputString = "";         // a String to hold incoming data
 // Esta função vai correr só uma vez quando se liga o nodeMCU à corrente
 void setup() {
   sos = 0;
+  temperature=0; // guarda a Temperatura
+  temperatureOld=0;
+  luminosity=0; // guarda a luminosidade
+  luminosityOld=0;
+  air_quality=0;
+  air_qualityOld=0;
 
   // initialize serial:
   Serial.begin(9600);
@@ -162,8 +175,6 @@ void setup() {
     myMqtt.NewModuleParameter(storage.moduleId, PARAM_SOS);
     Serial.println("set isCommand: /" + String(storage.moduleId) + "/" + PARAM_SOS);
     myMqtt.SetParameterIsCommand(storage.moduleId, PARAM_SOS, true);
-    Serial.println("set description: /" + String(storage.moduleId) + "/" + PARAM_SOS);
-    myMqtt.SetParameterDescription(storage.moduleId, PARAM_SOS, "SOS alarme: ");
 
     // Criar o Sensor.Parameter2
     // Sensor.Parameter2 - Temperatura
@@ -172,7 +183,9 @@ void setup() {
     Serial.println("set description: /" + String(storage.moduleId) + "/" + PARAM_TEMPERATURE);
     myMqtt.SetParameterDescription(storage.moduleId, PARAM_TEMPERATURE, "Temperatura: ");
     Serial.println("set Unit: /" + String(storage.moduleId) + "/" + PARAM_TEMPERATURE);
-    myMqtt.SetParameterUnit(storage.moduleId, PARAM_TEMPERATURE, "ºC");
+    myMqtt.SetParameterUnit(storage.moduleId, PARAM_TEMPERATURE, "C");
+    Serial.println("set Unit: /" + String(storage.moduleId) + "/" + PARAM_LUMINOSITY);
+    myMqtt.SetParameterDBLogging(storage.moduleId, PARAM_LUMINOSITY, true);
 
     // Criar o Sensor.Parameter3
     // Sensor.Parameter3 - luminosidade
@@ -192,7 +205,7 @@ void setup() {
     Serial.println("set description: /" + String(storage.moduleId) + "/" + PARAM_AIR_QUALITY);
     myMqtt.SetParameterDescription(storage.moduleId, PARAM_AIR_QUALITY, "Qualidade do ar: ");
     Serial.println("set Unit: /" + String(storage.moduleId) + "/" + PARAM_AIR_QUALITY);
-    myMqtt.SetParameterUnit(storage.moduleId, PARAM_AIR_QUALITY, "CO2/m2");
+    myMqtt.SetParameterUnit(storage.moduleId, PARAM_AIR_QUALITY, "%");
     Serial.println("set Unit: /" + String(storage.moduleId) + "/" + PARAM_AIR_QUALITY);
     myMqtt.SetParameterDBLogging(storage.moduleId, PARAM_AIR_QUALITY, true);
 
@@ -245,22 +258,12 @@ void loop() {
       stringComplete = true;
     }
   }
-}
 
-void process_string() {
-  char buf[MAXIMUM_BUFFER_SIZE];
-  inputString.toCharArray(buf, MAXIMUM_BUFFER_SIZE);
-  float *f_buf;
-  f_buf = (float *)(buf + 1);
-#ifdef DEBUG
-  Serial.println("Enter Process.");
-  Serial.println((buf[0] == TMP));
-  Serial.println((buf[0] == LUM));
-  Serial.println((buf[0] == AIR));
-#endif
-  if (buf[0] == SOS) {
-    sos = 1;
-    valueStr = String("1");
+  // Se o valor de limiar mudar vamos atualizá-lo
+  if (sos != sosOld)
+  {
+    sosOld = sos;
+    valueStr = String(sos);
 
     topic  = "/" + String(storage.moduleId) + "/" + PARAM_SOS;
     result = myMqtt.publish(topic, valueStr, 0, 1);
@@ -271,8 +274,11 @@ void process_string() {
     Serial.print(" value: ");
     Serial.println(valueStr);
 #endif
-  } else if (buf[0] == TMP) {
-    valueStr = String(int(buf[1]));
+  }
+  if (temperature != temperatureOld)
+  {
+    sosOld = sos;
+    valueStr = String(temperature);
 
     topic  = "/" + String(storage.moduleId) + "/" + PARAM_TEMPERATURE;
     result = myMqtt.publish(topic, valueStr, 0, 1);
@@ -283,30 +289,57 @@ void process_string() {
     Serial.print(" value: ");
     Serial.println(valueStr);
 #endif
+  }
+  if (luminosity != luminosityOld)
+  {
+    sosOld = sos;
+    valueStr = String(luminosity);
+
+    topic  = "/" + String(storage.moduleId) + "/" + PARAM_SOS;
+    result = myMqtt.publish(topic, valueStr, 0, 1);
+
+#ifdef DEBUG
+    Serial.print("Publish topic: ");
+    Serial.print(topic);
+    Serial.print(" value: ");
+    Serial.println(valueStr);
+#endif
+  }
+  if (air_quality != air_qualityOld)
+  {
+    sosOld = sos;
+    valueStr = String(sos);
+
+    topic  = "/" + String(storage.moduleId) + "/" + PARAM_SOS;
+    result = myMqtt.publish(topic, valueStr, 0, 1);
+
+#ifdef DEBUG
+    Serial.print("Publish topic: ");
+    Serial.print(topic);
+    Serial.print(" value: ");
+    Serial.println(valueStr);
+#endif
+  }
+}
+
+void process_string() {
+  char buf[MAXIMUM_BUFFER_SIZE];
+  inputString.toCharArray(buf, MAXIMUM_BUFFER_SIZE);
+#ifdef DEBUG
+  Serial.println("Enter Process.");
+  Serial.println((buf[0] == SOS));
+  Serial.println((buf[0] == TMP));
+  Serial.println((buf[0] == LUM));
+  Serial.println((buf[0] == AIR));
+#endif
+  if (buf[0] == SOS) {
+    sos = 1;
+  } else if (buf[0] == TMP) {
+    temperature = int(buf[1]);
   } else if (buf[0] == LUM) {
-    valueStr = String(int(buf[1]));
-
-    topic  = "/" + String(storage.moduleId) + "/" + PARAM_LUMINOSITY;
-    result = myMqtt.publish(topic, valueStr, 0, 1);
-
-#ifdef DEBUG
-    Serial.print("Publish topic: ");
-    Serial.print(topic);
-    Serial.print(" value: ");
-    Serial.println(valueStr);
-#endif
+    luminosity = int(buf[1]);
   } else if (buf[0] == AIR) {
-    valueStr = String(int(buf[1]));
-
-    topic  = "/" + String(storage.moduleId) + "/" + PARAM_AIR_QUALITY;
-    result = myMqtt.publish(topic, valueStr, 0, 1);
-
-#ifdef DEBUG
-    Serial.print("Publish topic: ");
-    Serial.print(topic);
-    Serial.print(" value: ");
-    Serial.println(valueStr);
-#endif
+    air_quality = int(buf[1]);
   }
 }
 
