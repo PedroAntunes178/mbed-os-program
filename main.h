@@ -59,6 +59,7 @@ BufferedSerial node(p9, p10);
 
 C12832 lcd(p5, p7, p6, p8, p11);
 LM75B sensor(p28,p27);
+AnalogIn pot1(p19);
 
 Mutex stdio_mutex, lcd_mutex, can_mutex;
 Thread thread, thread_air, thread_temprature, thread_msg;
