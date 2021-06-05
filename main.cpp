@@ -181,12 +181,12 @@ int main(){
   //r0MQ2 = calculateR0(sensorMQ2, airRatioMQ2);
 
   char buf[MAXIMUM_BUFFER_SIZE] = {0};
-
+/*
   node.write("Hi Node!\n", 4);
   if (node.read(buf, sizeof(buf))) {
     printf("Node answered back :)\n");
   }
-  printf("Entering main()\n");
+  printf("Entering main()\n");*/
 
   thread_sensor_read.start(callback(sensor_read));
   thread_sensor_read.set_priority(osPriorityNormal);
