@@ -43,6 +43,26 @@ char determinePPM(AnalogIn sensor, float R0, float m, float b) {
         return (char)floor(ppm);
 }
 
+void luminosity_measure(){
+  unsigned char buffer[8];
+  float *f_buf = (float*)(buffer+1);
+
+  while(1){
+    buffer[0] = LUM;
+    *f_buf = (float)pot1.read(); //mq2sensorPPM;
+    can_mutex.lock();
+    mail_t *mail = mail_box.try_alloc();
+    mail->identifier = buffer[0];
+    mail->data = *f_buf;
+    mail_box.put(mail);
+    can_mutex.unlock();
+    stdio_mutex.lock();
+    printf("Sent luminosity: %d\n", (int)*f_buf);
+    stdio_mutex.unlock();
+    ThisThread::sleep_for(SENSOR_INTERVAL);
+  }
+}
+
 void air_measure(void){
   unsigned char buffer[8];
   float *f_buf = (float*)(buffer+1);
