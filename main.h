@@ -27,6 +27,10 @@ DEFINES
 #define AIR 0xfb
 #define LUM 0xfa
 
+//defines sizes e times
+#define SENSOR_INTERVAL 3s
+#define XBEE_MSG_SIZE 10
+
 
 /*
 ESTRUTURAS
@@ -55,7 +59,10 @@ VARIAVEIS GLOBAIS
 /** The constructor takes in RX, and TX pin respectively.
   * These pins, for this example, are defined in mbed_app.json
   */
-CAN can(MBED_CONF_APP_CAN_RD, MBED_CONF_APP_CAN_TD);
+//CAN can(MBED_CONF_APP_CAN_RD, MBED_CONF_APP_CAN_TD);
+BufferedSerial xbee(p9, p10);
+DigitalOut xbee_rst(p30); //Digital reset for the XBee, 200ns for reset
+DigitalIn xbee_status(p29); //Digital status for the XBee
 
 C12832 lcd(p5, p7, p6, p8, p11);
 LM75B sensor(p28,p27);

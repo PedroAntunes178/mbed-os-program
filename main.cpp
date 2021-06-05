@@ -47,15 +47,17 @@ void luminosity_measure(){
 
   while(1){
     buffer[0] = LUM;
-    *f_buf = (float)pot1; //mq2sensorPPM;
+    *f_buf = (float)pot1.read(); //mq2sensorPPM;
+    can_mutex.lock();
     mail_t *mail = mail_box.try_alloc();
     mail->identifier = buffer[0];
     mail->data = *f_buf;
     mail_box.put(mail);
+    can_mutex.unlock();
     stdio_mutex.lock();
     printf("Sent luminosity: %d\n", (int)*f_buf);
     stdio_mutex.unlock();
-    ThisThread::sleep_for(3s);
+    ThisThread::sleep_for(SENSOR_INTERVAL);
   }
 }
 
@@ -66,14 +68,16 @@ void air_measure(void){
   while(1){
     buffer[0] = AIR;
     *f_buf = determinePPM(sensorMQ2, r0MQ2, slopeMQ2, interceptMQ2); //mq2sensorPPM;
+    can_mutex.lock();
     mail_t *mail = mail_box.try_alloc();
     mail->identifier = buffer[0];
     mail->data = *f_buf;
     mail_box.put(mail);
+    can_mutex.unlock();
     stdio_mutex.lock();
     printf("Sent air: %d\n", (int)*f_buf);
     stdio_mutex.unlock();
-    ThisThread::sleep_for(3s);
+    ThisThread::sleep_for(SENSOR_INTERVAL);
   }
 
 }
@@ -91,11 +95,14 @@ void temperature_measure(void){
         stdio_mutex.unlock();
         *f_buf=sensor.temp();
         can_mutex.lock();
-        if(can.write(CANMessage(1337, buffer, sizeof(buffer)))){
-          stdio_mutex.lock();
-          printf("Sent temperature: %d\n", (int)*f_buf);
-          stdio_mutex.unlock();
-        }
+        mail_t *mail = mail_box.try_alloc();
+        mail->identifier = buffer[0];
+        mail->data = *f_buf;
+        mail_box.put(mail);
+        can_mutex.unlock();
+        stdio_mutex.lock();
+        printf("Sent temperature: %d\n", (int)*f_buf);
+        stdio_mutex.unlock();
         can_mutex.unlock();
 
     } else {
@@ -104,10 +111,13 @@ void temperature_measure(void){
         stdio_mutex.unlock();
         buffer[1] = ERR;
         can_mutex.lock();
-        can.write(CANMessage(1337, buffer, 2));
+        mail_t *mail = mail_box.try_alloc();
+        mail->identifier = buffer[0];
+        mail->data = *f_buf;
+        mail_box.put(mail);
         can_mutex.unlock();
     }
-    ThisThread::sleep_for(3s);
+    ThisThread::sleep_for(SENSOR_INTERVAL);
   }
 }
 /*
@@ -128,6 +138,7 @@ void send(void){
 void process_msg(void){
   char msg_aux;
   float f_msg_aux;
+  char buffer[XBEE_MSG_SIZE];
 
   while(1){
     mail_t *mail = mail_box.try_get_for(100ms);
@@ -143,6 +154,13 @@ void process_msg(void){
         lcd.locate(0,0);
         lcd.printf("Air quality: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
+        if (f_msg_aux>50){
+          buffer[0] = SOS;
+          xbee.write(buffer, sizeof(buffer));
+          stdio_mutex.lock();
+          printf("Sent Xbee SOS\n");
+          stdio_mutex.unlock();
+        }
       } else if(msg_aux==TMP){
         f_msg_aux = mail->data;
         lcd_mutex.lock();
@@ -150,6 +168,10 @@ void process_msg(void){
         lcd.locate(0,10);
         lcd.printf("Temperature: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
+        if (f_msg_aux>50){
+          buffer[0] = SOS;
+          xbee.write(buffer, sizeof(buffer));
+        }
       } else if(msg_aux==LUM){
         f_msg_aux = mail->data;
         lcd_mutex.lock();
@@ -158,7 +180,8 @@ void process_msg(void){
         lcd.printf("Luminosity: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if (f_msg_aux>50){
-          //do something
+          buffer[0] = SOS;
+          xbee.write(buffer, sizeof(buffer));
         }
       }
       mail_box.free(mail);
@@ -172,26 +195,37 @@ int main(){
 
   printf("main()\n");
 
+  xbee_rst = 0;
   /*thread.start(send);
   thread.set_priority(osPriorityHigh);*/
   /*thread_air.start(air_measure);
   thread_air.set_priority(osPriorityNormal);*/
-  thread_luminosity.start(luminosity_measure);
-  thread_luminosity.set_priority(osPriorityNormal);
+  /*thread_luminosity.start(luminosity_measure);
+  thread_luminosity.set_priority(osPriorityNormal);*/
   thread_temprature.start(temperature_measure);
   thread_temprature.set_priority(osPriorityNormal);
   thread_msg.start(callback(process_msg));
   thread_msg.set_priority(osPriorityNormal1);
+  /*thread_msg.start(callback(process_xbee_msg));
+  thread_msg.set_priority(osPriorityHigh);*/
+  xbee_rst = 1;
 
-  CANMessage msg;
+  //CANMessage msg;
+  char buffer[XBEE_MSG_SIZE];
 
   while (1) {
-    if (can.read(msg)) {
+    /*if (can.read(msg)) {
       mail_t *mail = mail_box.try_alloc();
       mail->identifier = msg.data[0];
       float *f_buf = (float*)(msg.data+1);
       mail->data = *f_buf;
       mail_box.put(mail);
+    }*/
+    if(xbee.readable()){
+      xbee.read(buffer, sizeof(buffer));
+      stdio_mutex.lock();
+      printf("Read Xbee\n");
+      stdio_mutex.unlock();
     }
   }
 }
