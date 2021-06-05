@@ -99,8 +99,6 @@ void process_msg(void){
   char msg_aux;
   float f_msg_aux;
   char buffer[8];
-  float *f_buf;
-  f_buf = (float *)(buffer+2);
 
   while(1){
     mail_t *mail = mail_box.try_get_for(100ms);
@@ -178,13 +176,11 @@ void process_msg(void){
 int main(){
   //Uncomment if we want to reset R0 from default to our environment
   //r0MQ2 = calculateR0(sensorMQ2, airRatioMQ2);
-
-  char buf[MAXIMUM_BUFFER_SIZE] = {0};
-
+/*
   node.write("Hi Node!\n", 4);
   if (node.read(buf, sizeof(buf))) {
     printf("Node answered back :)\n");
-  }
+  }*/
   printf("Entering main()\n");
 
   thread_sensor_read.start(callback(sensor_read));
