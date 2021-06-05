@@ -184,7 +184,7 @@ void process_msg(void){
   float f_msg_aux;
   char buffer[8];
   float *f_buf;
-  f_buf = (float *)(buffer+1);
+  f_buf = (float *)(buffer+2);
 
   while(1){
     mail_t *mail = mail_box.try_get_for(100ms);
@@ -209,8 +209,8 @@ void process_msg(void){
         ThisThread::sleep_for(10ms);
         buffer[0]=INIT;
         buffer[1]=AIR;
-        *f_buf = f_msg_aux;
-        buffer[7]=END;
+        buffer[2] = (char)f_msg_aux;
+        buffer[3]=END;
         node.write(buffer, sizeof(buffer));
         ThisThread::sleep_for(10ms);
       } else if(msg_aux==TMP){
@@ -229,8 +229,8 @@ void process_msg(void){
         ThisThread::sleep_for(10ms);
         buffer[0]=INIT;
         buffer[1]=TMP;
-        *f_buf = f_msg_aux;
-        buffer[7]=END;
+        buffer[2] = (char)f_msg_aux;
+        buffer[3]=END;
         node.write(buffer, sizeof(buffer));
         ThisThread::sleep_for(10ms);
       } else if(msg_aux==LUM){
@@ -249,8 +249,8 @@ void process_msg(void){
         ThisThread::sleep_for(10ms);
         buffer[0]=INIT;
         buffer[1]=LUM;
-        *f_buf = f_msg_aux;
-        buffer[7]=END;
+        buffer[2] = (char)f_msg_aux;
+        buffer[3]=END;
         node.write(buffer, sizeof(buffer));
         ThisThread::sleep_for(10ms);
       }
