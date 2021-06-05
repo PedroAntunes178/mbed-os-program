@@ -26,6 +26,7 @@ DEFINES
 #define TMP 0xfc
 #define AIR 0xfb
 #define LUM 0xfa
+#define END 0x0a //é um \n
 
 //defines sizes e times
 #define MAXIMUM_BUFFER_SIZE 32
@@ -46,6 +47,7 @@ FUNÇÔES
 */
 void air_measure(void);
 void temperature_measure(void);
+void sensor_read(void);
 char determinePPM(AnalogIn, float, float, float);
 float calculateR0(AnalogIn, float);
 

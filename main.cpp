@@ -182,6 +182,9 @@ void send(void){
 void process_msg(void){
   char msg_aux;
   float f_msg_aux;
+  char buffer[8];
+  float *f_buf;
+  f_buf = (float *)(buffer+1);
 
   while(1){
     mail_t *mail = mail_box.try_get_for(100ms);
@@ -198,8 +201,18 @@ void process_msg(void){
         lcd.printf("Air quality: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if(f_msg_aux>50){
-          node.write("SOS\n", 5);
+          buffer[0]=INIT;
+          buffer[1]=SOS;
+          buffer[2]=END;
+          node.write(buffer, sizeof(buffer));
         }
+        ThisThread::sleep_for(10ms);
+        buffer[0]=INIT;
+        buffer[1]=AIR;
+        *f_buf = f_msg_aux;
+        buffer[7]=END;
+        node.write(buffer, sizeof(buffer));
+        ThisThread::sleep_for(10ms);
       } else if(msg_aux==TMP){
         f_msg_aux = mail->data;
         lcd_mutex.lock();
@@ -208,8 +221,18 @@ void process_msg(void){
         lcd.printf("Temperature: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if(f_msg_aux>50){
-          node.write("SOS\n", 5);
+          buffer[0]=INIT;
+          buffer[1]=SOS;
+          buffer[2]=END;
+          node.write(buffer, sizeof(buffer));
         }
+        ThisThread::sleep_for(10ms);
+        buffer[0]=INIT;
+        buffer[1]=TMP;
+        *f_buf = f_msg_aux;
+        buffer[7]=END;
+        node.write(buffer, sizeof(buffer));
+        ThisThread::sleep_for(10ms);
       } else if(msg_aux==LUM){
         f_msg_aux = mail->data;
         lcd_mutex.lock();
@@ -218,8 +241,18 @@ void process_msg(void){
         lcd.printf("Luminosity: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if(f_msg_aux>50){
-          node.write("SOS\n", 5);
+          buffer[0]=INIT;
+          buffer[1]=SOS;
+          buffer[2]=END;
+          node.write(buffer, sizeof(buffer));
         }
+        ThisThread::sleep_for(10ms);
+        buffer[0]=INIT;
+        buffer[1]=LUM;
+        *f_buf = f_msg_aux;
+        buffer[7]=END;
+        node.write(buffer, sizeof(buffer));
+        ThisThread::sleep_for(10ms);
       }
       mail_box.free(mail);
     }
