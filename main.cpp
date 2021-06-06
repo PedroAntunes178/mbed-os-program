@@ -22,7 +22,7 @@ float calculateR0(AnalogIn s, float ratio) {
         return r0;
 }
 
-char determinePPM(AnalogIn sensor, float R0, float m, float b) {
+float determinePPM(AnalogIn sensor, float R0, float m, float b) {
         //Slope and y-intercept of ppm graph line, and R0 from previous calculations
         float voltage = sensor.read() * 3.3;
         float RS_gas = ((3.3-voltage)/voltage);
@@ -35,7 +35,7 @@ char determinePPM(AnalogIn sensor, float R0, float m, float b) {
         if(ppm>10000){
             ppm = 10000;
         }
-        return (char)floor(ppm);
+        return ppm;
 }
 
 void sensor_read(){
@@ -114,7 +114,7 @@ void process_msg(void){
         lcd.locate(0,0);
         lcd.printf("Air quality: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
-        if(f_msg_aux>50){
+        if(f_msg_aux>100){
           buffer[0]=INIT;
           buffer[1]=SOS;
           buffer[2]=END;
@@ -154,7 +154,7 @@ void process_msg(void){
         lcd.locate(0,10);
         lcd.printf("Luminosity: %d\n", (int)f_msg_aux);
         lcd_mutex.unlock();
-        if(f_msg_aux>50){
+        if(f_msg_aux<50){
           buffer[0]=INIT;
           buffer[1]=SOS;
           buffer[2]=END;

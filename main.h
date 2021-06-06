@@ -48,7 +48,7 @@ FUNÇÔES
 void air_measure(void);
 void temperature_measure(void);
 void sensor_read(void);
-char determinePPM(AnalogIn, float, float, float);
+float determinePPM(AnalogIn, float, float, float);
 float calculateR0(AnalogIn, float);
 
 void send(void);
@@ -84,4 +84,4 @@ float mq2sensorPPM = 0;
 //globals for the R0 values
 float r0MQ2 = 0.83142;
 //gloabals for alarm values
-float alarmMQ2 = 1000;
+// float alarmMQ2 = 1000;

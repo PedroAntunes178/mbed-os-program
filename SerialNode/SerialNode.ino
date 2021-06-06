@@ -34,7 +34,7 @@
 
 // Definir a localização na EEPROM (memória não volátil) onde se vai armazenar o ficheiro de configuração
 #define CONFIG_START 0
-#define CONFIG_VERSION "SERv110" //as to be of size 8bytes
+#define CONFIG_VERSION "SERv111" //as to be of size 8bytes
 
 // Estrutura dos dados que estão guardados na memoria
 struct StoreStruct {
@@ -204,7 +204,7 @@ void setup() {
     Serial.println("set description: /" + String(storage.moduleId) + "/" + PARAM_AIR_QUALITY);
     myMqtt.SetParameterDescription(storage.moduleId, PARAM_AIR_QUALITY, "Qualidade do ar: ");
     Serial.println("set Unit: /" + String(storage.moduleId) + "/" + PARAM_AIR_QUALITY);
-    myMqtt.SetParameterUnit(storage.moduleId, PARAM_AIR_QUALITY, "%");
+    myMqtt.SetParameterUnit(storage.moduleId, PARAM_AIR_QUALITY, "ppm");
     Serial.println("set Unit: /" + String(storage.moduleId) + "/" + PARAM_AIR_QUALITY);
     myMqtt.SetParameterDBLogging(storage.moduleId, PARAM_AIR_QUALITY, true);
 
