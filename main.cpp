@@ -107,12 +107,12 @@ void process_msg(void){
       stdio_mutex.lock();
       printf("Message received: %d\n", (int)msg_aux);
       stdio_mutex.unlock();
+      //lcd.cls();
       if(msg_aux==AIR){
         f_msg_aux = mail->data;
         lcd_mutex.lock();
-        lcd.cls();
         lcd.locate(0,0);
-        lcd.printf("Air quality: %d\n", (int)f_msg_aux);
+        lcd.printf("Air quality: %d    \n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if(f_msg_aux>100){
           buffer[0]=INIT;
@@ -130,9 +130,9 @@ void process_msg(void){
       } else if(msg_aux==TMP){
         f_msg_aux = mail->data;
         lcd_mutex.lock();
-        lcd.cls();
-        lcd.locate(0,5);
-        lcd.printf("Temperature: %d\n", (int)f_msg_aux);
+        //lcd.cls();
+        lcd.locate(0,10);
+        lcd.printf("Temperature: %d    \n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if(f_msg_aux>50){
           buffer[0]=INIT;
@@ -150,9 +150,9 @@ void process_msg(void){
       } else if(msg_aux==LUM){
         f_msg_aux = mail->data;
         lcd_mutex.lock();
-        lcd.cls();
-        lcd.locate(0,10);
-        lcd.printf("Luminosity: %d\n", (int)f_msg_aux);
+        //lcd.cls();
+        lcd.locate(0,20);
+        lcd.printf("Luminosity: %d    \n", (int)f_msg_aux);
         lcd_mutex.unlock();
         if(f_msg_aux<50){
           buffer[0]=INIT;
