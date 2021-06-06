@@ -13,7 +13,7 @@
 #define MAXIMUM_BUFFER_SIZE 32
 
 // Definir o DEBUG como 1 faz com que os prints apareçam
-#define DEBUG 1
+#define DEBUG 0
 
 // O SSID é o nome da rede a que o vosso computador se vai conectar
 // A password é a da rede de internet a qual te estas a conectar
@@ -34,7 +34,7 @@
 
 // Definir a localização na EEPROM (memória não volátil) onde se vai armazenar o ficheiro de configuração
 #define CONFIG_START 0
-#define CONFIG_VERSION "SERv101" //as to be of size 8bytes
+#define CONFIG_VERSION "SERv110" //as to be of size 8bytes
 
 // Estrutura dos dados que estão guardados na memoria
 struct StoreStruct {
@@ -54,8 +54,6 @@ struct StoreStruct {
 #define PARAM_LUMINOSITY    "Sensor.Parameter3"
 #define PARAM_AIR_QUALITY   "Sensor.Parameter4"
 
-// Definir o tempo que esperamos pelas mensagens da cloud
-#define MS_IN_SEC  1000 // 1S
 
 // Criar objecto de MQTT
 MQTT myMqtt("", EIOT_CLOUD_ADDRESS, 1883);
@@ -81,9 +79,10 @@ String inputString = "";         // a String to hold incoming data
 // Esta função vai correr só uma vez quando se liga o nodeMCU à corrente
 void setup() {
   sos = 0;
-  temperature=0; // guarda a Temperatura
+  sosOld = 0;
+  temperature=0;
   temperatureOld=0;
-  luminosity=0; // guarda a luminosidade
+  luminosity=0;
   luminosityOld=0;
   air_quality=0;
   air_qualityOld=0;
@@ -184,8 +183,8 @@ void setup() {
     myMqtt.SetParameterDescription(storage.moduleId, PARAM_TEMPERATURE, "Temperatura: ");
     Serial.println("set Unit: /" + String(storage.moduleId) + "/" + PARAM_TEMPERATURE);
     myMqtt.SetParameterUnit(storage.moduleId, PARAM_TEMPERATURE, "C");
-    Serial.println("set Unit: /" + String(storage.moduleId) + "/" + PARAM_LUMINOSITY);
-    myMqtt.SetParameterDBLogging(storage.moduleId, PARAM_LUMINOSITY, true);
+    Serial.println("set Unit: /" + String(storage.moduleId) + "/" + PARAM_TEMPERATURE);
+    myMqtt.SetParameterDBLogging(storage.moduleId, PARAM_TEMPERATURE, true);
 
     // Criar o Sensor.Parameter3
     // Sensor.Parameter3 - luminosidade
@@ -277,7 +276,7 @@ void loop() {
   }
   if (temperature != temperatureOld)
   {
-    sosOld = sos;
+    temperatureOld = temperature;
     valueStr = String(temperature);
 
     topic  = "/" + String(storage.moduleId) + "/" + PARAM_TEMPERATURE;
@@ -292,10 +291,10 @@ void loop() {
   }
   if (luminosity != luminosityOld)
   {
-    sosOld = sos;
+    luminosityOld = luminosity;
     valueStr = String(luminosity);
 
-    topic  = "/" + String(storage.moduleId) + "/" + PARAM_SOS;
+    topic  = "/" + String(storage.moduleId) + "/" + PARAM_LUMINOSITY;
     result = myMqtt.publish(topic, valueStr, 0, 1);
 
 #ifdef DEBUG
@@ -307,10 +306,10 @@ void loop() {
   }
   if (air_quality != air_qualityOld)
   {
-    sosOld = sos;
-    valueStr = String(sos);
+    air_qualityOld = air_quality;
+    valueStr = String(air_quality);
 
-    topic  = "/" + String(storage.moduleId) + "/" + PARAM_SOS;
+    topic  = "/" + String(storage.moduleId) + "/" + PARAM_AIR_QUALITY;
     result = myMqtt.publish(topic, valueStr, 0, 1);
 
 #ifdef DEBUG
@@ -443,12 +442,6 @@ void myDataCb(String& topic, String& data) {
   if (topic == String("/" + String(storage.moduleId) + "/" + PARAM_SOS)) // Executa se a mensagem que receber for relativa a ligar ou desligar o modo automatico
   {
     sos = (data == String("1"));
-    if(sos == 0){
-      valueStr = String("0");
-
-      topic  = "/" + String(storage.moduleId) + "/" + PARAM_SOS;
-      result = myMqtt.publish(topic, valueStr, 0, 1);
-    }
 #ifdef DEBUG
     Serial.println("SOS mode");
     Serial.println(data);
